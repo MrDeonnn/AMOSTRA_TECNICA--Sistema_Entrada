@@ -1,9 +1,10 @@
-from flask import Flask, render_template, redirect, request, url_for, send_file
+from flask import Flask, render_template, redirect, request, url_for, send_file, session
 from flask_sqlalchemy import SQLAlchemy
 from fpdf import FPDF
 import os
 
 app = Flask(__name__)
+app.secret_key = "pew_pew_pew"  # Chave secreta para sessões
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
@@ -15,7 +16,18 @@ class Usuarios(db.Model):
     cargo = db.Column(db.String(100), nullable=False)
     horario_chegada = db.Column(db.String(100), nullable=False)
     cpf = db.Column(db.String(20), nullable=False)
-    
+
+def validar_cpf(cpf):
+    cpf = ''.join(filter(str.isdigit, cpf))
+    if len(cpf) != 11 or cpf == cpf[0] * 11:
+        return False
+    for i in range(9, 11):
+        soma = sum(int(cpf[num]) * ((i+1) - num) for num in range(0, i))
+        digito = ((soma * 10) % 11) % 10
+        if digito != int(cpf[i]):
+            return False
+    return True
+
 @app.route('/')
 def home():
     return render_template('escolha.html')
@@ -28,16 +40,20 @@ def cadastro():
         cargo = request.form['oqvce']
         horario_chegada = request.form['horario']
         cpf = request.form['CPF']
-        
+
+        if not validar_cpf(cpf):
+            ultimo_usuario = request.args.get('ultimousuario', None)
+            return render_template('index.html', ultimousuario=ultimo_usuario, erro_cpf="CPF inválido!")
+
         novo_usuario = Usuarios(nome=nome, sobrenome=sobrenome, cargo=cargo, horario_chegada=horario_chegada, cpf=cpf)
         db.session.add(novo_usuario)
         db.session.commit()
 
-        ultimo_usuario = nome
-        print(ultimo_usuario)
-        return redirect(url_for('cadastro', ultimousuario=ultimo_usuario))
+        session['ultimousuario'] = nome  # Salva na sessão
+        print(nome)
+        return redirect(url_for('cadastro'))
             
-    ultimo_usuario = request.args.get('ultimousuario', None)
+    ultimo_usuario = session.get('ultimousuario', None)
     return render_template('index.html', ultimousuario=ultimo_usuario)
 
 @app.route('/relatorios')
@@ -64,7 +80,6 @@ def gerar_pdf():
         return send_file(pdf_file_path, as_attachment=True)
     else:
         return "Erro: O arquivo PDF não foi gerado corretamente.", 500
-
 
 if __name__ == '__main__':
     with app.app_context():
