@@ -1,5 +1,4 @@
-<p style="position: fixed; background-color: #07074d; color: white; border: 2px solid white; border-radius: 30px; "><a
-    href="/" style="text-decoration: none; color: white; padding: 20px 20px 20px 20px;">Voltar</a></p>
+<p style="position: fixed; background-color: #07074d; color: white; border: 2px solid white; border-radius: 30px; "><a href="/" style="text-decoration: none; color: white; padding: 20px 20px 20px 20px;">Voltar</a></p>
 
 
 <div class="formbold-main-wrapper">
@@ -99,7 +98,7 @@
       <div class="formbold-input-flex">
         <div>
           <label for="oqvce" class="formbold-form-label"> O que você é? </label>
-          <select id="oqvce" name="oqvce" class="formbold-form-input" oninput="alunoMenorIdade()" required>
+          <select id="oqvce" name="oqvce" class="formbold-form-input" oninput="usuarioEAluno(this)" required>
             <option value="aluno">Aluno</option>
             <option value="paimae">Pai/Mãe</option>
             <option value="responsavel">Responsável</option>
@@ -109,30 +108,34 @@
           </select>
         </div>
 
-        <div>
+        <!--<div>
           <label for="horario" class="formbold-form-label"> Horário de Chegada </label>
           <input type="time" name="horario" id="horario" class="formbold-form-input" placeholder="EXEMPLO: 14:30"
             required />
-        </div>
+        </div>-->
+
+          <div id="rgdiv" style="display: none;">
+            <label for="RG" class="formbold-form-label" id="rglabel">RG</label>
+            <input type="text" name="RG" id="RG" class="formbold-form-input" maxlength="12"
+              oninput="formatarRG(this)" />
+          </div>
 
       </div>
-      <div class="formbold-input-flex">
-        <div>
-          <label for="CPF" class="formbold-form-label" id="cpflabel"> CPF do Pai/Responsável </label>
-          <input type="text" name="CPF" id="horario" class="formbold-form-input" maxlength="14"
-            oninput="formatarCPF(this)" required />
-        </div>
-      </div>
+       <!-- <div class="formbold-input-flex">
+          <div>
+            <label for="RG" class="formbold-form-label" id="rglabel">RG</label>
+            <input type="text" name="RG" id="RG" class="formbold-form-input" maxlength="12"
+              oninput="formatarRG(this)" required />
+          </div>
+        </div>-->
       <!-- Verific Erro Lol -->
 
-      <p style="color:red; display: none" id="bobobo">CPF INVÁLIDO!</p>
+      <p style="color:red; display: none" id="bobobo">RG INVÁLIDO!</p>
 
       <button class="formbold-btn">Entre Agora!</button>
 
     </form>
     <p id="lembrete"></p>
-    <p id="lembrete2">CASO O ALUNO SEJA MAIOR DE IDADE, COLOQUE O PRÓPRIO CPF!</p>
-
 
 
 
@@ -351,54 +354,44 @@
 <script>
   const pw = document.getElementById('bobobo');
 
-  function alunoMenorIdade() {
-    const oqvce = document.getElementById('oqvce');
-    const cpf = document.getElementById('cpflabel');
-    const lembrete = document.getElementById('lembrete2');
-
-
-    if (oqvce.value === 'aluno') {
-      cpf.innerText = 'CPF do Pai/Responsável';
-      lembrete.innerText = 'CASO O ALUNO SEJA MAIOR DE IDADE, COLOQUE O PRÓPRIO CPF!';
+  function usuarioEAluno(cargo) {
+    const rgdiv = document.getElementById('rgdiv');
+    const rginput = document.getElementById('RG');
+    const rglabel = document.getElementById('rglabel');
+    if (cargo.value != 'aluno') {
+      rgdiv.style.display = 'block';
+      rginput.required = true;
     } else {
-      cpf.innerText = 'CPF';
-      lembrete.innerText = '';
+      rgdiv.style.display = 'none';
+      rginput.required = false;
     }
   }
 
-  function formatarCPF(campo) {
-    let cpf = campo.value.replace(/\D/g, '');
-    cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
-    cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
-    cpf = cpf.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-    campo.value = cpf;
+  function formatarRG(campo) {
+    let rg = campo.value.replace(/\D/g, '');
+    rg = rg.replace(/^(\d{2})(\d)/, '$1.$2');
+    rg = rg.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+    rg = rg.replace(/^(\d{2})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3-$4');
+    campo.value = rg;
   }
 
-  function validarCPF(cpf) {
-    cpf = cpf.replace(/[^\d]+/g, '');
-    if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
-    let soma = 0, resto;
-    for (let i = 1; i <= 9; i++) soma += parseInt(cpf[i - 1]) * (11 - i);
-    resto = (soma * 10) % 11;
-    if (resto === 10 || resto === 11) resto = 0;
-    if (resto !== parseInt(cpf[9])) return false;
-    soma = 0;
-    for (let i = 1; i <= 10; i++) soma += parseInt(cpf[i - 1]) * (12 - i);
-    resto = (soma * 10) % 11;
-    if (resto === 10 || resto === 11) resto = 0;
-    if (resto !== parseInt(cpf[10])) return false;
+  function validarRG(rg) {
+    rg = rg.replace(/[^\d]+/g, '');
+    if (rg.length < 7 || rg.length > 10) return false;
     return true;
   }
 
   document.querySelector('form').onsubmit = function (e) {
-    const cpf = document.querySelector('input[name="CPF"]').value.replace(/\D/g, '');
-    if (!validarCPF(cpf)) {
-      pw.style.display = 'block';
-      e.preventDefault();
-      return false;
+    const cargo = document.getElementById('oqvce').value;
+    if (cargo !== 'aluno') {
+      const rg = document.querySelector('input[name="RG"]').value.replace(/\D/g, '');
+      if (!validarRG(rg)) {
+        pw.style.display = 'block';
+        e.preventDefault();
+        return false;
+      }
     }
+    // Se for aluno, não valida RG
   };
-
-
 </script>
 <title>SEGUNDA AMOSTRA DE CURSOS | REGISTRO DE ENTRADA</title>

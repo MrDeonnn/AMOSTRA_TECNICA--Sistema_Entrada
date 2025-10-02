@@ -1,11 +1,14 @@
 from flask import Flask, render_template, redirect, request, url_for, send_file, session
 from flask_sqlalchemy import SQLAlchemy
 from fpdf import FPDF
+from dotenv import load_dotenv
 import os
 
+
+load_dotenv()
 app = Flask(__name__)
-app.secret_key = "pew_pew_pew"  # Chave secreta para sessões
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+app.secret_key = os.getenv('SECRET_KEY')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -14,17 +17,12 @@ class Usuarios(db.Model):
     nome = db.Column(db.String(100), nullable=False)
     sobrenome = db.Column(db.String(100), nullable=False)
     cargo = db.Column(db.String(100), nullable=False)
-    horario_chegada = db.Column(db.String(100), nullable=False)
-    cpf = db.Column(db.String(20), nullable=False)
+    rg = db.Column(db.String(20), nullable=True)
 
-def validar_cpf(cpf):
-    cpf = ''.join(filter(str.isdigit, cpf))
-    if len(cpf) != 11 or cpf == cpf[0] * 11:
-        return False
-    for i in range(9, 11):
-        soma = sum(int(cpf[num]) * ((i+1) - num) for num in range(0, i))
-        digito = ((soma * 10) % 11) % 10
-        if digito != int(cpf[i]):
+def validar_rg(rg, cargo):
+    if cargo != 'aluno':
+        rg = ''.join(filter(str.isdigit, rg))
+        if len(rg) < 7 or len(rg) > 10:
             return False
     return True
 
@@ -38,18 +36,17 @@ def cadastro():
         nome = request.form['firstname']
         sobrenome = request.form['lastname']
         cargo = request.form['oqvce']
-        horario_chegada = request.form['horario']
-        cpf = request.form['CPF']
+        rg = request.form['RG']
 
-        if not validar_cpf(cpf):
-            ultimo_usuario = request.args.get('ultimousuario', None)
-            return render_template('index.html', ultimousuario=ultimo_usuario, erro_cpf="CPF inválido!")
+        if not validar_rg(rg, cargo):
+            ultimo_usuario = session.get('ultimousuario', None)
+            return render_template('index.html', ultimousuario=ultimo_usuario, erro_rg="RG inválido!")
 
-        novo_usuario = Usuarios(nome=nome, sobrenome=sobrenome, cargo=cargo, horario_chegada=horario_chegada, cpf=cpf)
+        novo_usuario = Usuarios(nome=nome, sobrenome=sobrenome, cargo=cargo, rg=rg)
         db.session.add(novo_usuario)
         db.session.commit()
 
-        session['ultimousuario'] = nome  # Salva na sessão
+        session['ultimousuario'] = nome
         print(nome)
         return redirect(url_for('cadastro'))
             
@@ -61,6 +58,12 @@ def relatorio():
     usuarios = Usuarios.query.all()
     return render_template('relatorios.html', usuarios=usuarios)
 
+
+@app.route('/pesquisar', methods=['GET', 'POST'])
+def pesquisar():
+    usuarios = Usuarios.query.all()
+    return render_template('pesquisar_usuario.html', usuarios=usuarios)
+
 @app.route('/gerar_pdf')
 def gerar_pdf():
     usuarios = Usuarios.query.all()
@@ -71,7 +74,7 @@ def gerar_pdf():
     pdf.cell(200, 10, txt="Relatório de Usuários", ln=True, align='C')
     
     for usuario in usuarios:
-        pdf.cell(200, 10, txt=f"{usuario.nome} {usuario.sobrenome} - {usuario.cargo} - {usuario.horario_chegada} - {usuario.cpf}", ln=True)
+        pdf.cell(200, 10, txt=f"{usuario.nome} {usuario.sobrenome} - {usuario.cargo} - {usuario.horario_chegada} - {usuario.rg}", ln=True)
     
     pdf_file_path = 'relatorio_usuarios.pdf'
     pdf.output(pdf_file_path)
@@ -80,9 +83,32 @@ def gerar_pdf():
         return send_file(pdf_file_path, as_attachment=True)
     else:
         return "Erro: O arquivo PDF não foi gerado corretamente.", 500
+    
+# So pra testar
+@app.route('/popular_db')
+def popular_db():
+    import random
+    nomes = ["Ana", "Bruno", "Carlos", "Daniela", "Eduardo", "Fernanda", "Gabriel", "Helena", "Igor", "Julia",
+             "Kleber", "Larissa", "Marcos", "Natália", "Otávio", "Paula", "Quésia", "Rafael", "Sabrina", "Thiago",
+             "Ursula", "Vinicius", "Wesley", "Xuxa", "Yasmin", "Zeca"]
+    sobrenomes = ["Silva", "Souza", "Oliveira", "Santos", "Pereira", "Costa", "Rodrigues", "Almeida", "Nascimento", "Lima"]
+    cargos = ["aluno", "professor", "visitante", "responsavel", "paimae"]
+
+    for i in range(50):
+        nome = random.choice(nomes)
+        sobrenome = random.choice(sobrenomes)
+        cargo = random.choice(cargos)
+        rg = str(random.randint(1000000, 999999999))
+        usuario = Usuarios(nome=nome, sobrenome=sobrenome, cargo=cargo, rg=rg)
+        db.session.add(usuario)
+    db.session.commit()
+    return "Banco populado com 50 usuários!"
 
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     
     app.run(debug=False)
+
+    # To com uma vontade absurda de aplicar CC nesse código, mas não vejo necessidade
+    # disso agora.
