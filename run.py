@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, request, url_for, send_file, session
+from flask import Flask, render_template, redirect, request, url_for, send_file, session, make_response
 from flask_sqlalchemy import SQLAlchemy
 from fpdf import FPDF
 from dotenv import load_dotenv
@@ -75,13 +75,11 @@ def gerar_pdf():
     for usuario in usuarios:
         pdf.cell(200, 10, txt=f"{usuario.nome} {usuario.sobrenome} - {usuario.cargo} - {usuario.horario_chegada} - {usuario.rg}", ln=True)
     
-    pdf_file_path = 'relatorio_usuarios.pdf'
-    pdf.output(pdf_file_path)
-    
-    if os.path.exists(pdf_file_path):
-        return send_file(pdf_file_path, as_attachment=True)
-    else:
-        return "Erro: O arquivo PDF não foi gerado corretamente.", 500
+    # Gerar o PDF em memória
+    response = make_response(pdf.output(dest='S').encode('latin1'))
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = 'inline; filename=relatorio_usuarios.pdf'
+    return response
     
 # So pra testar
 @app.route('/popular_db')
