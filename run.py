@@ -73,7 +73,7 @@ def gerar_pdf():
     pdf.cell(200, 10, txt="Relatório de Usuários", ln=True, align='C')
     
     for usuario in usuarios:
-        pdf.cell(200, 10, txt=f"{usuario.nome} {usuario.sobrenome} - {usuario.cargo} - {usuario.horario_chegada} - {usuario.rg}", ln=True)
+        pdf.cell(200, 10, txt=f"{usuario.nome} {usuario.sobrenome} - {usuario.cargo} - {usuario.rg}", ln=True)
     
     # Gerar o PDF em memória
     response = make_response(pdf.output(dest='S').encode('latin1'))
